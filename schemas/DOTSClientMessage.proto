@@ -1,0 +1,43 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+message DOTSClientMessage {
+         // Client generated sequence number
+         uint64 seqno = 1;
+
+         // Sequence number of last received server message
+         uint64 last_svr_seqno = 2;
+
+         repeated DOTSMitigation mitigations = 3;
+
+         // Request active mitigation list from server
+         bool active = 4;
+
+         // Ping request (operator initiated)
+         bool ping = 5;
+
+         DOTSSessionConfig config = 6;
+
+         repeated google.protobuf.Any extensions = 999;
+}
+
+message DOTSMitigation {
+	string eventid = 1;
+	bool requested = 2;
+	string scope = 3;
+	uint32 lifetime = 4;
+	float efficacy = 5;
+	repeated google.protobuf.Any extensions = 999;
+}
+
+// Per session configuration sent on signaling session init
+         message DOTSSessionConfig {
+           // Acceptable signal loss
+           uint32 loss_limit = 1;
+
+           // Maximum mitigation lifetime in seconds
+           uint32 lifetime_max = 2;
+
+           // Heartbeat interval in milliseconds
+           uint32 heartbeat_interval = 3;
+}
