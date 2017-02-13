@@ -1,0 +1,89 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+message DOTSServerMessage {
+         // Server generated sequence number
+         uint64 seqno = 1;
+
+         // Sequence number of last received Client message
+         uint64 last_client_seqno = 2;
+
+         // Request immediate heartbeat response from client.
+         bool ping = 3;
+
+         // Server error details, if available
+         DOTSServerError error = 4;
+
+         DOTSRedirect redirect = 5;
+
+         // Mitigation data, limited by MTU
+         repeated DOTSMitigationStatus mitigations = 6;
+}
+
+message DOTSRedirect {
+         // Redirection target DOTS server address
+         string target = 1;
+
+         // Address family of redirection target
+         enum RedirectionTargetType {
+           DNSNAME = 0;
+           IPV4 = 4;
+           IPV6 = 6;
+         }
+         RedirectionTargetType target_type = 2;
+
+         // Port on which to contact redirection target.
+         // XXX Protobufs has no uint16 type, implementations
+         // will need to sanity check.
+         uint32 port = 3;
+}
+
+message DOTSServerError {
+         enum ErrorCode {
+           NOERROR = 0;
+           INVALID_VALUE = 1;
+           MITIGATION_UNAVAILABLE = 2;
+           MITIGATION_CONFLICT = 3;
+           MALFORMED_MESSAGE = 4;
+         }
+         ErrorCode code = 1;
+
+         // Error details, returned as a blob
+         google.protobuf.Any details = 2;
+}
+
+message DOTSMitigationStatus {
+       // Opaque Client generated event identifier, used by DOTS client
+       // to associate a mitigation status with the event triggering the
+       // mitigation request.
+       string eventid = 1;
+
+       // Mitigation state
+       bool enabled = 2;
+
+       // Mitigation time-to-live (lifetime - (now - start))
+       uint32 ttl = 3;
+
+       // Dropped byte count
+       uint64 bytes_dropped = 4;
+
+       // Dropped bits per second
+       uint64 bps_dropped = 5;
+
+       // Dropped packet count
+       uint64 pkts_dropped = 6;
+
+       // Dropped packets per second
+       uint64 pps_dropped = 7;
+
+       // Blacklist enabled through data channel
+       bool blacklist_enabled = 8;
+
+       // Whitelist enabled through data channel
+       bool whitelist_enabled = 9;
+
+       // Filters enabled through data channel
+       bool filters_enabled = 10;
+
+       repeated google.protobuf.Any extensions = 999;
+}
