@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import DOTSServerMessage_pb2
+import DOTSClientMessage_pb2
 import sys
 
 if __name__ == "__main__":
@@ -9,9 +10,10 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     server = DOTSServerMessage_pb2.DOTSServerMessage()
+    client = DOTSClientMessage_pb2.DOTSClientMessage()
 
     f = open(sys.argv[1], "rb")
-    server.ParseFromString(f.read())
+    client.ParseFromString(f.read())
     f.close()
 
-    print "Last client sequence number server received:", server.last_client_seqno
+    print "Last client sequence number server received:", client.seqno 

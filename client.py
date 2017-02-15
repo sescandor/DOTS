@@ -1,17 +1,46 @@
 #! /usr/bin/python
 
 import DOTSClientMessage_pb2 
+import random
 import sys
+
+
+class CommChannel(object):
+
+    def __init__(self, handle):
+        self.medium = open(handle, "wb")
+
+    def write(self, message):
+        self.medium.write(message)
+
+    def close(self):
+        self.medium.close()
+
+
+class DOTSClient(object):
+
+    def __init__(self, channel_handle):
+        self.message = DOTSClientMessage_pb2.DOTSClientMessage()
+        self.message.seqno = random.randint(0, 18446744073709551615)
+        self.channel = CommChannel(channel_handle)
+
+    def writebuf(self):
+        self.message.seqno = self.message.seqno + 1
+
+    def send(self):
+        self.writebuf()
+
+        self.channel.write(self.message.SerializeToString())
+
+    def close_channel(self):
+        self.channel.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print "Usage:", sys.argv[0], "COMM_FILE"
         sys.exit(-1)
 
-    client = DOTSClientMessage_pb2.DOTSClientMessage()
-
-    client.seqno = 1
-
-    f = open(sys.argv[1], "wb")
-    f.write(client.SerializeToString())
-    f.close()
+    client = DOTSClient(sys.argv[1])
+    client.send()
+    client.close_channel()
