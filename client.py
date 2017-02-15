@@ -1,20 +1,9 @@
 #! /usr/bin/python
 
-import DOTSClientMessage_pb2 
 import random
 import sys
-
-
-class CommChannel(object):
-
-    def __init__(self, handle):
-        self.medium = open(handle, "wb")
-
-    def write(self, message):
-        self.medium.write(message)
-
-    def close(self):
-        self.medium.close()
+import comm_channel
+import DOTSClientMessage_pb2
 
 
 class DOTSClient(object):
@@ -22,7 +11,7 @@ class DOTSClient(object):
     def __init__(self, channel_handle):
         self.message = DOTSClientMessage_pb2.DOTSClientMessage()
         self.message.seqno = random.randint(0, 18446744073709551615)
-        self.channel = CommChannel(channel_handle)
+        self.channel = comm_channel.CommChannel(channel_handle)
 
     def writebuf(self):
         self.message.seqno = self.message.seqno + 1
