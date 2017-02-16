@@ -1,6 +1,5 @@
 #! /usr/bin/python
 
-import datetime
 import random
 import signal
 import sys
@@ -25,6 +24,8 @@ class DOTSClient(object):
 
         signal.signal(signal.SIGINT, self.close_channel)
 
+        self.recv_msg_event = threading.Event()
+
     def writebuf(self):
         self.client_message.seqno = self.client_message.seqno + 1
         self.client_message.last_svr_seqno = self.last_recv_seqno
@@ -47,11 +48,26 @@ class DOTSClient(object):
         print "client seq number sent:", self.client_message.seqno
 
     def start(self):
-        d = threading.Thread(name='self.heartbeat_daemon', target=self.heartbeat_daemon)
-        d.setDaemon(True)
-        d.start()
-        self.threads.append(d)
+        heartbeat_d = threading.Thread(name='self.heartbeat_daemon',
+                                       target=self.heartbeat_daemon)
+        heartbeat_d.setDaemon(True)
+        heartbeat_d.start()
+        listener_thread = threading.Thread(name='self.listener_thread',
+                                           target=self.listener_thread,
+                                           args=(self, self.recv_msg_event,))
+        listener_thread.start()
+        self.threads.append(heartbeat_d)
+        self.threads.append(listener_thread)
         signal.pause()
+
+    def wait_for_message(e):
+        while True:
+            recv_message_event = e.wait()
+            print "received message!"
+
+    def listener_thread(self):
+        self.wait_for_message()
+
 
     def heartbeat_daemon(self):
         while True:
