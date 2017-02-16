@@ -34,18 +34,20 @@ class DOTSClient(object):
     def read(self):
         self.readbuf()
 
-    def close_channel(self):
-        self.channel.close()
+    def test_send(self):
+        self.send()
+        print "client seq number sent:", self.client_message.seqno
 
+    def close_channel(self):
+        print "closing down channel"
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print "Usage:", sys.argv[0], "SEND_COMM_FILE RECV_COMM_FILE"
+    if len(sys.argv) != 2:
+        print "Usage:", sys.argv[0], "COMM_FILE"
         sys.exit(-1)
 
-    channel = comm_channel.CommChannel(sys.argv[1], sys.argv[2])
+    channel = comm_channel.CommChannel(sys.argv[1])
 
     client = DOTSClient(channel)
-    client.send()
-    # client.read()
+    client.test_send()
     client.close_channel()
