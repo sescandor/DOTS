@@ -19,6 +19,8 @@ class DOTSClient(object):
         self.client_message.seqno = random.randint(0, MAX_UINT)
         self.last_recv_seqno = 0
         self.hb_interval = 15
+        self.acceptable_lossiness = 9
+        self.signal_lost = False
         self.client_message.last_svr_seqno = self.last_recv_seqno
         self.channel = channel
         self.threads = []
@@ -40,14 +42,18 @@ class DOTSClient(object):
         self.server_message.ParseFromString(self.channel.read())
         self.last_recv_seqno = self.server_message.seqno
 
+        lossiness = self.client_message.seqno - self.last_recv_seqno
+        if lossiness > self.acceptable_lossiness:
+            self.signal_lost = True
+
         print "last_recv_seqno:", self.last_recv_seqno
 
     def read(self):
-        while True:
+        while not self.signal_lost:
             self.recv_msg_event.wait()
             try:
                 self.readbuf()
-            except exception as e:
+            except Exception as e:
                 print "Error reading channel"
                 print "Error was:", str(e)
             finally:
@@ -81,7 +87,7 @@ class DOTSClient(object):
         self.channel.wait_for_message(self.recv_msg_event)
 
     def heartbeat_daemon(self):
-        while True:
+        while not self.signal_lost:
             self.send()
             time.sleep(self.hb_interval)
 
