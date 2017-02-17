@@ -8,16 +8,17 @@ Done:
 * Initial client and server implementation.
 * Client can consume server messages.
 * Server can consume client messages.
-* (Needs to be merged to HEAD) Client can now generate heartbeats
-* (Needs to be merged to HEAD) Client can now process heartbeats from server.
-* (Needs to be merged to HEAD) Client shuts down channel if it determines that
+* Client can now generate heartbeats
+* Client can now process heartbeats from server.
+* Client shuts down channel if it determines that
   communication channel is lossy.
+* Server can now generate heartbeats 
+* Server can now process heartbeats from client.
 
 
 TODO:
-* Server to generate heartbeats
 * Implement "Mitigation Request Handling" 
-
+* Fix SIGINT response issue
 
 Methods for testing:
 --------------------
