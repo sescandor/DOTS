@@ -40,6 +40,8 @@ class DOTSClient(object):
         self.server_message.ParseFromString(self.channel.read())
         self.last_recv_seqno = self.server_message.seqno
 
+        print "last_recv_seqno:", self.last_recv_seqno
+
     def read(self):
         while True:
             self.recv_msg_event.wait()
@@ -100,6 +102,7 @@ if __name__ == "__main__":
     # We can send a udp packet to this client for testing in this way:
     # cat client_messages_file | nc -4u -w1 localhost 9999
     channel = comm_channel.CommChannel(int(sys.argv[1]))
+    channel.set_remote('localhost', 1235)
 
     client = DOTSClient(channel)
     client.start()

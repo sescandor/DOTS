@@ -13,9 +13,17 @@ class CommChannel(object):
             print "Listening on port:", handle
             self.sock.bind(self.server_address)
 
+            self.send_to_address = ''
+
+        def set_remote(self, address, port):
+            self.send_to_address = (address, port)
+
         def write(self, message):
-            # self.sock.sendto(message, address)
-            print "stub for response to server"
+            try:
+                self.sock.sendto(message, self.send_to_address)
+            except Exception as e:
+                print "Error writing to remote agent."
+                print "Error was:", str(e)
 
         def read(self):
             return self.data
@@ -23,7 +31,6 @@ class CommChannel(object):
         def wait_for_message(self, e_msg_recvd):
             self.e_msg_recvd = e_msg_recvd
             while True:
-                print "Waiting for a message..."
                 data, address = self.sock.recvfrom(4096)
                 print "Received ", len(data), " bytes from ", address
                 self.data = data
