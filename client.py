@@ -9,13 +9,14 @@ import comm_channel
 import DOTSClientMessage_pb2
 import DOTSServerMessage_pb2
 
+MAX_UINT = 18446744073709551615
 
 class DOTSClient(object):
 
     def __init__(self, channel):
         self.client_message = DOTSClientMessage_pb2.DOTSClientMessage()
         self.server_message = DOTSServerMessage_pb2.DOTSServerMessage()
-        self.client_message.seqno = random.randint(0, 18446744073709551615)
+        self.client_message.seqno = random.randint(0, MAX_UINT)
         self.last_recv_seqno = 0
         self.hb_interval = 15
         self.client_message.last_svr_seqno = self.last_recv_seqno
@@ -44,8 +45,9 @@ class DOTSClient(object):
             self.recv_msg_event.wait()
             try:
                 self.readbuf()
-            except:
+            except Exception as e:
                 print "Error reading channel"
+                print "Error was:", str(e)
             finally:
                 self.recv_msg_event.clear()
 
