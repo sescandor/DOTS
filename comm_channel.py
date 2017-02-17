@@ -15,6 +15,8 @@ class CommChannel(object):
 
             self.send_to_address = ''
 
+            self.data = None 
+
         def set_remote(self, address, port):
             self.send_to_address = (address, port)
 
