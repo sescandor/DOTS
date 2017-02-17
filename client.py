@@ -47,7 +47,7 @@ class DOTSClient(object):
             self.recv_msg_event.wait()
             try:
                 self.readbuf()
-            except Exception as e:
+            except exception as e:
                 print "Error reading channel"
                 print "Error was:", str(e)
             finally:
@@ -90,10 +90,12 @@ class DOTSClient(object):
         sys.exit(0)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print "Usage:", sys.argv[0], "LISTEN_PORT"
+    if len(sys.argv) != 4:
+        print "Usage:", sys.argv[0], "LISTEN_PORT REMOTE_ADDR REMOTE_PORT"
         sys.exit(-1)
 
+    # Methods for testing:
+    # Method 1)
     # Generate a binary file called "client_messages_file" with:
     # seqno
     # last_client_seqno
@@ -101,8 +103,16 @@ if __name__ == "__main__":
     # We can then start the DOTSClient to listen on port 9999.
     # We can send a udp packet to this client for testing in this way:
     # cat client_messages_file | nc -4u -w1 localhost 9999
+    #
+    # Method 2)
+    # Start a mock server using:
+    # ncat -e /bin/cat -k -u -l 1235
+    # This will echo back any data sent to it.
+    # Then, start up the DOTSClient. This should receive its
+    # own sequence number believing that it is the server's sequence number
+
     channel = comm_channel.CommChannel(int(sys.argv[1]))
-    channel.set_remote('localhost', 1235)
+    channel.set_remote(sys.argv[2], int(sys.argv[3]))
 
     client = DOTSClient(channel)
     client.start()
