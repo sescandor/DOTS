@@ -41,7 +41,13 @@ class DOTSClient(object):
         self.last_recv_seqno = self.server_message.seqno
 
     def read(self):
-        self.readbuf()
+        self.recv_msg_event.wait()
+        try:
+            self.readbuf()
+        except:
+            print "Error reading channel"
+        finally:
+            self.recv_msg_event.clear()
 
     def test_send(self):
         self.send()
@@ -52,22 +58,23 @@ class DOTSClient(object):
                                        target=self.heartbeat_daemon)
         heartbeat_d.setDaemon(True)
         heartbeat_d.start()
+
         listener_thread = threading.Thread(name='self.listener_thread',
-                                           target=self.listener_thread,
-                                           args=(self, self.recv_msg_event,))
+                                           target=self.listener_thread)
         listener_thread.start()
+
+        reader_thread = threading.Thread(name='self.read',
+                                         target=self.read)
+
+        reader_thread.start()
+
         self.threads.append(heartbeat_d)
         self.threads.append(listener_thread)
+        self.threads.append(reader_thread)
         signal.pause()
 
-    def wait_for_message(e):
-        while True:
-            recv_message_event = e.wait()
-            print "received message!"
-
     def listener_thread(self):
-        self.wait_for_message()
-
+        self.channel.wait_for_message(self.recv_msg_event)
 
     def heartbeat_daemon(self):
         while True:
@@ -80,10 +87,11 @@ class DOTSClient(object):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print "Usage:", sys.argv[0], "COMM_FILE"
+        print "Usage:", sys.argv[0], "LISTEN_PORT"
         sys.exit(-1)
 
-    channel = comm_channel.CommChannel(sys.argv[1])
+    # We can send a udp packet to this client for testing in this way: echo -n "hello" | nc -4u -w1 localhost 9999
+    channel = comm_channel.CommChannel(int(sys.argv[1]))
 
     client = DOTSClient(channel)
     client.start()
