@@ -37,17 +37,17 @@ class DOTSClient(object):
 
     def readbuf(self):
         self.server_message.ParseFromString(self.channel.read())
-
         self.last_recv_seqno = self.server_message.seqno
 
     def read(self):
-        self.recv_msg_event.wait()
-        try:
-            self.readbuf()
-        except:
-            print "Error reading channel"
-        finally:
-            self.recv_msg_event.clear()
+        while True:
+            self.recv_msg_event.wait()
+            try:
+                self.readbuf()
+            except:
+                print "Error reading channel"
+            finally:
+                self.recv_msg_event.clear()
 
     def test_send(self):
         self.send()
@@ -90,9 +90,14 @@ if __name__ == "__main__":
         print "Usage:", sys.argv[0], "LISTEN_PORT"
         sys.exit(-1)
 
-    # We can send a udp packet to this client for testing in this way: echo -n "hello" | nc -4u -w1 localhost 9999
+    # Generate a binary file called "client_messages_file" with:
+    # seqno
+    # last_client_seqno
+    # as data. We can use this file as input to the client for testing.
+    # We can then start the DOTSClient to listen on port 9999.
+    # We can send a udp packet to this client for testing in this way:
+    # cat client_messages_file | nc -4u -w1 localhost 9999
     channel = comm_channel.CommChannel(int(sys.argv[1]))
 
     client = DOTSClient(channel)
     client.start()
-
