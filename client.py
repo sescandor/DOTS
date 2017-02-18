@@ -19,6 +19,7 @@ class DOTSClient(object):
         self.client_message.seqno = random.randint(0, MAX_UINT)
         self.last_recv_seqno = 0
         self.hb_interval = 15
+        self.req_interval = 5
         self.acceptable_lossiness = 9
         self.signal_lost = False
         self.client_message.last_svr_seqno = self.last_recv_seqno
@@ -48,11 +49,19 @@ class DOTSClient(object):
 
         print "last_recv_seqno:", self.last_recv_seqno
 
+    def handle_message(self):
+        print "handling message"
+
+        if self.server_message.mitigations.enabled:
+            # Need to acquire this:
+            self.req_mitigation_resp
+
     def read(self):
         while not self.signal_lost:
             self.recv_msg_event.wait()
             try:
                 self.readbuf()
+                self.handle_message()
             except Exception as e:
                 print "Error reading channel"
                 print "Error was:", str(e)
@@ -62,6 +71,35 @@ class DOTSClient(object):
     def test_send(self):
         self.send()
         print "client seq number sent:", self.client_message.seqno
+
+    def test_req_mitigation(self):
+        req_thread = threading.Thread(name='self.req_mitigation',
+                                      target=self.req_mitigation)
+
+        req_thread.start()
+
+    def req_mitigation(self):
+        # DOTS client may send repeated requests until it receives
+        # a suitable response from the DOTS server, by which it may
+        # interpret successful receipt.
+
+        # NOTE: Need to acquire self.req_mitigation_resp before checking
+
+        while not self.req_mitigation_resp:
+            self.client_message.mitigations.eventid = 666  # test for now
+            self.client_message.mitigations.requested = True
+            self.client_message.mitigations.scope = "some scope"
+            self.client_message.mitigations.lifetime = 15
+            self.send()
+            time.sleep(self.req_interval)
+
+        self.clear_mitigation_req()
+
+    def clear_mitigation_req(self):
+        self.client_message.mitigations.eventid.ClearField()
+        self.client_message.mitigations.requested.ClearField()
+        self.client_message.mitigations.scope.ClearField()
+        self.client_message.mitigations.lifetime.ClearField()
 
     def start(self):
         heartbeat_d = threading.Thread(name='self.heartbeat_daemon',
