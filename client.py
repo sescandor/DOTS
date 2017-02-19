@@ -3,13 +3,14 @@
 import random
 import signal
 import sys
-import threading
+from threading import Thread, Lock, Event
 import time
 import comm_channel
 import DOTSClientMessage_pb2
 import DOTSServerMessage_pb2
 
 MAX_UINT = 18446744073709551615
+
 
 class DOTSClient(object):
 
@@ -28,7 +29,7 @@ class DOTSClient(object):
 
         signal.signal(signal.SIGINT, self.close_channel)
 
-        self.recv_msg_event = threading.Event()
+        self.recv_msg_event = Event()
 
     def writebuf(self):
         self.client_message.seqno = self.client_message.seqno + 1
@@ -53,8 +54,9 @@ class DOTSClient(object):
         print "handling message"
 
         if self.server_message.mitigations.enabled:
-            # Need to acquire this:
-            self.req_mitigation_resp
+            self.lock.acquire()
+            self.req_mitigation_resp = False
+            self.lock.release()
 
     def read(self):
         while not self.signal_lost:
@@ -73,8 +75,8 @@ class DOTSClient(object):
         print "client seq number sent:", self.client_message.seqno
 
     def test_req_mitigation(self):
-        req_thread = threading.Thread(name='self.req_mitigation',
-                                      target=self.req_mitigation)
+        req_thread = Thread(name='self.req_mitigation',
+                            target=self.req_mitigation)
 
         req_thread.start()
 
@@ -83,14 +85,17 @@ class DOTSClient(object):
         # a suitable response from the DOTS server, by which it may
         # interpret successful receipt.
 
-        # NOTE: Need to acquire self.req_mitigation_resp before checking
+        self.lock.acquire()
+        mitigation_resp = self.req_mitigation_resp
+        self.lock.release()
 
-        while not self.req_mitigation_resp:
+        while not mitigation_resp:
             self.client_message.mitigations.eventid = 666  # test for now
             self.client_message.mitigations.requested = True
             self.client_message.mitigations.scope = "some scope"
             self.client_message.mitigations.lifetime = 15
             self.send()
+            print "Sent mitigation request."
             time.sleep(self.req_interval)
 
         self.clear_mitigation_req()
@@ -102,17 +107,17 @@ class DOTSClient(object):
         self.client_message.mitigations.lifetime.ClearField()
 
     def start(self):
-        heartbeat_d = threading.Thread(name='self.heartbeat_daemon',
-                                       target=self.heartbeat_daemon)
+        heartbeat_d = Thread(name='self.heartbeat_daemon',
+                             target=self.heartbeat_daemon)
         heartbeat_d.setDaemon(True)
         heartbeat_d.start()
 
-        listener_thread = threading.Thread(name='self.listener_thread',
-                                           target=self.listener_thread)
+        listener_thread = Thread(name='self.listener_thread',
+                                 target=self.listener_thread)
         listener_thread.start()
 
-        reader_thread = threading.Thread(name='self.read',
-                                         target=self.read)
+        reader_thread = Thread(name='self.read',
+                               target=self.read)
 
         reader_thread.start()
 
