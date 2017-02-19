@@ -31,6 +31,8 @@ class DOTSClient(object):
 
         self.recv_msg_event = Event()
 
+        self.req_mitigation_resp = {}
+
     def writebuf(self):
         self.client_message.seqno = self.client_message.seqno + 1
         self.client_message.last_svr_seqno = self.last_recv_seqno
@@ -53,10 +55,12 @@ class DOTSClient(object):
     def handle_message(self):
         print "handling message"
 
-        if self.server_message.mitigations.enabled:
-            self.lock.acquire()
-            self.req_mitigation_resp = False
-            self.lock.release()
+        if len(self.server_message.mitigations) > 0:
+            for resp in self.server_message.mitigations:
+                if resp.enabled:
+                    self.lock.acquire()
+                    self.req_mitigation_resp[resp.eventid] = False
+                    self.lock.release()
 
     def read(self):
         while not self.signal_lost:
@@ -85,15 +89,18 @@ class DOTSClient(object):
         # a suitable response from the DOTS server, by which it may
         # interpret successful receipt.
 
+        # TODO: Fix below to match handle_message, which pairs mitigation status with eventid
         self.lock.acquire()
         mitigation_resp = self.req_mitigation_resp
         self.lock.release()
 
         while not mitigation_resp:
-            self.client_message.mitigations.eventid = 666  # test for now
-            self.client_message.mitigations.requested = True
-            self.client_message.mitigations.scope = "some scope"
-            self.client_message.mitigations.lifetime = 15
+            mit_req = self.client_message.mitigations.add()
+            mit_req.eventid = 666  # test for now
+            mit_req.requested = True
+            mit_req.scope = "some scope"
+            mit_req.lifetime = 15
+            self.client_message.mitigations.extend([mit_req])
             self.send()
             print "Sent mitigation request."
             time.sleep(self.req_interval)
