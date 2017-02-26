@@ -15,7 +15,7 @@ class CommChannel(object):
 
             self.send_to_address = ''
 
-            self.data = None 
+            self.data = None
 
         def set_remote(self, address, port):
             self.send_to_address = (address, port)
@@ -24,7 +24,7 @@ class CommChannel(object):
             try:
                 self.sock.sendto(message, self.send_to_address)
             except Exception as e:
-                print "Error writing to remote agent."
+                print "CommChannel Error writing to remote agent."
                 print "Error was:", str(e)
 
         def read(self):
