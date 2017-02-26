@@ -16,6 +16,17 @@ class ClientMessage():
 
     def __init__(self):
         self.client_message = DOTSClientMessage_pb2.DOTSClientMessage()
+        self.client_message.seqno = random.randint(0, MAX_UINT)
+
+    def get_seqno(self):
+        return self.client_message.seqno
+
+    def prep_for_write(self):
+        self.client_message.seqno = self.client_message.seqno + 1
+        self.client_message.last_svr_seqno = self.last_recv_seqno
+
+    def write(self):
+        self.client_message.SerializeToString()
 
     def create_mitigation_req(self):
         mit_req = self.client_message.mitigations.add()
@@ -23,22 +34,31 @@ class ClientMessage():
         mit_req.requested = True
         mit_req.scope = "some scope"
         mit_req.lifetime = 15
+        self.client_message.mitigations.extend([mit_req])
 
         return mit_req
+
+    def set_last_svr_seqno(self, last_recv_seqno):
+        self.client_message.last_svr_seqno = last_recv_seqno
+
+    def clear_mitigation_req(self):
+        self.client_message.mitigations.eventid.ClearField()
+        self.client_message.mitigations.requested.ClearField()
+        self.client_message.mitigations.scope.ClearField()
+        self.client_message.mitigations.lifetime.ClearField()
 
 
 class DOTSClient(object):
 
     def __init__(self, channel):
-        self.client_message = DOTSClientMessage_pb2.DOTSClientMessage()
+        self.client_message = ClientMessage()
         self.server_message = DOTSServerMessage_pb2.DOTSServerMessage()
-        self.client_message.seqno = random.randint(0, MAX_UINT)
         self.last_recv_seqno = 0
         self.hb_interval = 15
         self.req_interval = 5
         self.acceptable_lossiness = 9
         self.signal_lost = False
-        self.client_message.last_svr_seqno = self.last_recv_seqno
+        self.client_message.set_last_svr_seqno(self.last_recv_seqno)
         self.channel = channel
         self.threads = []
 
@@ -50,19 +70,18 @@ class DOTSClient(object):
         self.req_mitigation_resp = {}
 
     def writebuf(self):
-        self.client_message.seqno = self.client_message.seqno + 1
-        self.client_message.last_svr_seqno = self.last_recv_seqno
+        self.client_message.prep_for_write()
 
     def send(self):
         self.writebuf()
 
-        self.channel.write(self.client_message.SerializeToString())
+        self.channel.write(self.client_message.write())
 
     def readbuf(self):
         self.server_message.ParseFromString(self.channel.read())
         self.last_recv_seqno = self.server_message.seqno
 
-        lossiness = self.client_message.seqno - self.last_recv_seqno
+        lossiness = self.client_message.get_seqno() - self.last_recv_seqno
         if lossiness > self.acceptable_lossiness:
             self.signal_lost = True
 
@@ -92,7 +111,7 @@ class DOTSClient(object):
 
     def test_send(self):
         self.send()
-        print "client seq number sent:", self.client_message.seqno
+        print "client seq number sent:", self.client_message.get_seqno()
 
     def test_req_mitigation(self):
         print "### Starting test_req_mitigation ###"
@@ -119,20 +138,13 @@ class DOTSClient(object):
         print "=== starting req mitigation ==="
 
         while not mitigation_resp:
-            
-            self.client_message.mitigations.extend([mit_req])
             self.send()
             print "Sent mitigation request."
             time.sleep(self.req_interval)
 
         self.clear_mitigation_req()
 
-    def clear_mitigation_req(self):
-        self.client_message.mitigations.eventid.ClearField()
-        self.client_message.mitigations.requested.ClearField()
-        self.client_message.mitigations.scope.ClearField()
-        self.client_message.mitigations.lifetime.ClearField()
-
+    
     def start(self):
         heartbeat_d = Thread(name='self.heartbeat_daemon',
                              target=self.heartbeat_daemon)
