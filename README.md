@@ -5,6 +5,7 @@ Based on protocol specifications found in [the IETF DOTS document]
 (https://datatracker.ietf.org/doc/draft-teague-dots-protocol/?include\_text=1)
 
 Scope:
+Implement a Proof-of-Concept that implements Direct Signaling using the DOTS protocol, specifically:
 * Implement client-server heartbeat communication.
 * Implement client to server mitigation request handling
 
