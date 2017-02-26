@@ -12,7 +12,7 @@ import DOTSServerMessage_pb2
 MAX_UINT = 18446744073709551615
 
 
-class ClientMessage():
+class ClientMessage(object):
 
     def __init__(self):
         self.client_message = DOTSClientMessage_pb2.DOTSClientMessage()
@@ -48,6 +48,19 @@ class ClientMessage():
         self.client_message.mitigations.lifetime.ClearField()
 
 
+class MitigationResponses(object):
+    def __init__(self):
+        # This is a hash of event_id and mitigation status from server
+        self.req_mitigation_resp = {}
+
+        self.lock_mitigation = Lock()
+
+    def get_response_for(self, event_id):
+        self.lock_mitigation.acquire()
+        self.req_mitigation_resp[event_id]
+        self.lock_mitigation.release()
+
+
 class DOTSClient(object):
 
     def __init__(self, channel):
@@ -66,10 +79,7 @@ class DOTSClient(object):
 
         self.recv_msg_event = Event()
 
-        # This is a hash of event_id and mitigation status from server
-        self.req_mitigation_resp = {}
-
-        self.lock_mitigation = Lock()
+        self.mitigation_responses = MitigationResponses()
 
     def writebuf(self):
         self.client_message.prep_for_write()
@@ -133,14 +143,13 @@ class DOTSClient(object):
         # TODO: Fix below to match handle_message, which pairs mitigation
         # status with eventid
         print "**** entering req mitigation ****"
-        self.lock_mitigation.acquire()
         try:
-            mitigation_resp = self.req_mitigation_resp[mit_req.eventid]
+            mitigation_resp = self.mitigation_responses.\
+                                   get_response_for(mit_req.eventid)
         except Exception as e:
             print "Error matching mitigation response with event id"
             print "Error was:", str(e)
             return
-        self.lock_mitigation.release()
 
         print "=== starting req mitigation ==="
 
