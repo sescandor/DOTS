@@ -12,6 +12,21 @@ import DOTSServerMessage_pb2
 MAX_UINT = 18446744073709551615
 
 
+class ClientMessage():
+
+    def __init__(self):
+        self.client_message = DOTSClientMessage_pb2.DOTSClientMessage()
+
+    def create_mitigation_req(self):
+        mit_req = self.client_message.mitigations.add()
+        mit_req.eventid = 666  # test for now
+        mit_req.requested = True
+        mit_req.scope = "some scope"
+        mit_req.lifetime = 15
+
+        return mit_req
+
+
 class DOTSClient(object):
 
     def __init__(self, channel):
@@ -31,6 +46,7 @@ class DOTSClient(object):
 
         self.recv_msg_event = Event()
 
+        # This is a hash of event_id and mitigation status from server
         self.req_mitigation_resp = {}
 
     def writebuf(self):
@@ -79,27 +95,31 @@ class DOTSClient(object):
         print "client seq number sent:", self.client_message.seqno
 
     def test_req_mitigation(self):
+        print "### Starting test_req_mitigation ###"
+        mit_req = self.create_mitigation_req()
+
         req_thread = Thread(name='self.req_mitigation',
-                            target=self.req_mitigation)
+                            target=self.req_mitigation,
+                            args=[mit_req])
 
         req_thread.start()
 
-    def req_mitigation(self):
+    def req_mitigation(self, mit_req):
         # DOTS client may send repeated requests until it receives
         # a suitable response from the DOTS server, by which it may
         # interpret successful receipt.
 
-        # TODO: Fix below to match handle_message, which pairs mitigation status with eventid
+        # TODO: Fix below to match handle_message, which pairs mitigation
+        # status with eventid
+        print "**** entering req mitigation ****"
         self.lock.acquire()
-        mitigation_resp = self.req_mitigation_resp
+        mitigation_resp = self.req_mitigation_resp[mit_req.eventid]
         self.lock.release()
 
+        print "=== starting req mitigation ==="
+
         while not mitigation_resp:
-            mit_req = self.client_message.mitigations.add()
-            mit_req.eventid = 666  # test for now
-            mit_req.requested = True
-            mit_req.scope = "some scope"
-            mit_req.lifetime = 15
+            
             self.client_message.mitigations.extend([mit_req])
             self.send()
             print "Sent mitigation request."
@@ -154,4 +174,5 @@ if __name__ == "__main__":
     channel.set_remote(sys.argv[2], int(sys.argv[3]))
 
     client = DOTSClient(channel)
-    client.start()
+    #client.start()
+    client.test_req_mitigation()
