@@ -21,9 +21,9 @@ class ClientMessage(object):
     def get_seqno(self):
         return self.client_message.seqno
 
-    def prep_for_write(self):
+    def prep_for_write(self, last_recv_seqno):
         self.client_message.seqno = self.client_message.seqno + 1
-        self.client_message.last_svr_seqno = self.last_recv_seqno
+        self.client_message.last_svr_seqno = last_recv_seqno
 
     def write(self):
         self.client_message.SerializeToString()
@@ -60,6 +60,11 @@ class MitigationResponses(object):
         self.req_mitigation_resp[event_id]
         self.lock_mitigation.release()
 
+    def set_response_for(self, event_id, to_state):
+        self.lock_mitigation.acquire()
+        self.req_mitigation_resp[event_id] = to_state
+        self.lock_mitigation.release()
+
 
 class DOTSClient(object):
 
@@ -82,7 +87,7 @@ class DOTSClient(object):
         self.mitigation_responses = MitigationResponses()
 
     def writebuf(self):
-        self.client_message.prep_for_write()
+        self.client_message.prep_for_write(self.last_recv_seqno)
 
     def send(self):
         self.writebuf()
@@ -105,9 +110,8 @@ class DOTSClient(object):
         if len(self.server_message.mitigations) > 0:
             for resp in self.server_message.mitigations:
                 if resp.enabled:
-                    self.lock.acquire()
-                    self.req_mitigation_resp[resp.eventid] = False
-                    self.lock.release()
+                    self.mitigation_responses.\
+                         set_response_for(resp.eventid, False)
 
     def read(self):
         while not self.signal_lost:
@@ -133,6 +137,8 @@ class DOTSClient(object):
                             target=self.req_mitigation,
                             args=[mit_req])
 
+        self.mitigation_responses.set_response_for("666", False)
+
         req_thread.start()
 
     def req_mitigation(self, mit_req):
@@ -140,8 +146,6 @@ class DOTSClient(object):
         # a suitable response from the DOTS server, by which it may
         # interpret successful receipt.
 
-        # TODO: Fix below to match handle_message, which pairs mitigation
-        # status with eventid
         print "**** entering req mitigation ****"
         try:
             mitigation_resp = self.mitigation_responses.\
