@@ -28,9 +28,9 @@ class ClientMessage(object):
     def write(self):
         return self.client_message.SerializeToString()
 
-    def create_mitigation_req(self):
+    def create_mitigation_req(self, eventid):
         mit_req = self.client_message.mitigations.add()
-        mit_req.eventid = "666"  # test for now
+        mit_req.eventid = eventid
         mit_req.requested = True
         mit_req.scope = "some scope"
         mit_req.lifetime = 15
@@ -131,7 +131,7 @@ class DOTSClient(object):
 
     def test_req_mitigation(self):
         print "### Starting test_req_mitigation ###"
-        mit_req = self.client_message.create_mitigation_req()
+        mit_req = self.client_message.create_mitigation_req("666")
 
         req_thread = Thread(name='self.req_mitigation',
                             target=self.req_mitigation,
@@ -205,5 +205,5 @@ if __name__ == "__main__":
     channel.set_remote(sys.argv[2], int(sys.argv[3]))
 
     client = DOTSClient(channel)
-    client.start()
-    #client.test_req_mitigation()
+    #client.start()
+    client.test_req_mitigation()
