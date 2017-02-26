@@ -26,7 +26,7 @@ class ClientMessage(object):
         self.client_message.last_svr_seqno = last_recv_seqno
 
     def write(self):
-        self.client_message.SerializeToString()
+        return self.client_message.SerializeToString()
 
     def create_mitigation_req(self):
         mit_req = self.client_message.mitigations.add()
@@ -205,5 +205,5 @@ if __name__ == "__main__":
     channel.set_remote(sys.argv[2], int(sys.argv[3]))
 
     client = DOTSClient(channel)
-    #client.start()
-    client.test_req_mitigation()
+    client.start()
+    #client.test_req_mitigation()
