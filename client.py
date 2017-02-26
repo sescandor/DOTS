@@ -30,7 +30,7 @@ class ClientMessage():
 
     def create_mitigation_req(self):
         mit_req = self.client_message.mitigations.add()
-        mit_req.eventid = 666  # test for now
+        mit_req.eventid = "666"  # test for now
         mit_req.requested = True
         mit_req.scope = "some scope"
         mit_req.lifetime = 15
@@ -68,6 +68,8 @@ class DOTSClient(object):
 
         # This is a hash of event_id and mitigation status from server
         self.req_mitigation_resp = {}
+
+        self.lock_mitigation = Lock()
 
     def writebuf(self):
         self.client_message.prep_for_write()
@@ -115,7 +117,7 @@ class DOTSClient(object):
 
     def test_req_mitigation(self):
         print "### Starting test_req_mitigation ###"
-        mit_req = self.create_mitigation_req()
+        mit_req = self.client_message.create_mitigation_req()
 
         req_thread = Thread(name='self.req_mitigation',
                             target=self.req_mitigation,
@@ -131,9 +133,14 @@ class DOTSClient(object):
         # TODO: Fix below to match handle_message, which pairs mitigation
         # status with eventid
         print "**** entering req mitigation ****"
-        self.lock.acquire()
-        mitigation_resp = self.req_mitigation_resp[mit_req.eventid]
-        self.lock.release()
+        self.lock_mitigation.acquire()
+        try:
+            mitigation_resp = self.req_mitigation_resp[mit_req.eventid]
+        except Exception as e:
+            print "Error matching mitigation response with event id"
+            print "Error was:", str(e)
+            return
+        self.lock_mitigation.release()
 
         print "=== starting req mitigation ==="
 
@@ -144,7 +151,6 @@ class DOTSClient(object):
 
         self.clear_mitigation_req()
 
-    
     def start(self):
         heartbeat_d = Thread(name='self.heartbeat_daemon',
                              target=self.heartbeat_daemon)
