@@ -33,6 +33,7 @@ class DOTSServer(object):
     def test_send_mitigation_resp(self):
         mit_resp = self.server_message.mitigations.add()
         mit_resp.eventid = "666"
+        mit_resp.enabled = True
 
     def writebuf(self):
         self.server_message.seqno = self.server_message.seqno + 1

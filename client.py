@@ -34,18 +34,37 @@ class ClientMessage(object):
         mit_req.requested = True
         mit_req.scope = "some scope"
         mit_req.lifetime = 15
-        self.client_message.mitigations.extend([mit_req])
 
         return mit_req
 
     def set_last_svr_seqno(self, last_recv_seqno):
         self.client_message.last_svr_seqno = last_recv_seqno
 
-    def clear_mitigation_req(self):
-        self.client_message.mitigations.eventid.ClearField()
-        self.client_message.mitigations.requested.ClearField()
-        self.client_message.mitigations.scope.ClearField()
-        self.client_message.mitigations.lifetime.ClearField()
+    def find_mitigation_index(self, mit_eventid):
+
+        index = 0
+
+        for event in self.client_message.mitigations:
+            if event.eventid == mit_eventid:
+                return index
+            index = index + 1
+
+        index = -1
+        return index
+
+    def clear_mitigation_req(self, mit_eventid):
+
+        print "In clear_mitigation_req..."
+        print type(self.client_message.mitigations)
+        print self.client_message.mitigations
+
+        event_index = self.find_mitigation_index(mit_eventid)
+
+        print "Did we find event? =>", event_index
+
+        if event_index > -1:
+            print "Removing mitigation event req:", str(mit_eventid)
+            del self.client_message.mitigations[event_index]
 
 
 class MitigationResponses(object):
@@ -57,8 +76,10 @@ class MitigationResponses(object):
 
     def get_response_for(self, event_id):
         self.lock_mitigation.acquire()
-        self.req_mitigation_resp[event_id]
+        resp = self.req_mitigation_resp[event_id]
         self.lock_mitigation.release()
+
+        return resp
 
     def set_response_for(self, event_id, to_state):
         self.lock_mitigation.acquire()
@@ -101,25 +122,30 @@ class DOTSClient(object):
 
     def readbuf(self):
         self.server_message.ParseFromString(self.channel.read())
-        self.last_recv_seqno = self.server_message.seqno
+        self.last_recv_seqno = self.server_message.last_client_seqno
 
-        lossiness = self.client_message.get_seqno() - self.last_recv_seqno
-        if lossiness > self.acceptable_lossiness:
-            self.signal_lost = True
+        #lossiness = self.client_message.get_seqno() - self.last_recv_seqno
+        #if lossiness > self.acceptable_lossiness:
+        #    print "Client Lost signal **"
+        #    print "self.client_message.get_seqno() - self.last_recv_seqno=", lossiness
+        #    self.signal_lost = True
 
         print "last_recv_seqno:", self.last_recv_seqno
 
     def handle_message(self):
         print "handling message"
 
+        print "Num server mitigations:", len(self.server_message.mitigations)
         if len(self.server_message.mitigations) > 0:
             for resp in self.server_message.mitigations:
                 if resp.enabled:
+                    print "Setting mitigation response for event:", str(resp.eventid)
                     self.mitigation_responses.\
-                         set_response_for(resp.eventid, False)
+                         set_response_for(resp.eventid, True)
 
     def read(self):
         while not self.signal_lost:
+            print "Client waiting for message..."
             self.recv_msg_event.wait()
             try:
                 self.readbuf()
@@ -128,6 +154,7 @@ class DOTSClient(object):
                 print "Client - Error reading channel"
                 print "Error was:", str(e)
             finally:
+                print "++++ Clearing received message event."
                 self.recv_msg_event.clear()
 
     def test_send(self):
@@ -169,18 +196,19 @@ class DOTSClient(object):
 
         while not mitigation_resp:
             self.send()
-            print "*** Sent mitigation request.***"
+            print "*** Sent mitigation request for eventid:", str(mit_req.eventid)
             time.sleep(self.req_interval)
             mitigation_resp = self.mitigation_responses.\
                                    get_response_for(mit_req.eventid)
+            print "mitigation_resp = ", mitigation_resp
 
         self.client_message.clear_mitigation_req(mit_req.eventid)
 
     def start(self):
-        heartbeat_d = Thread(name='self.heartbeat_daemon',
-                             target=self.heartbeat_daemon)
-        heartbeat_d.setDaemon(True)
-        heartbeat_d.start()
+        #heartbeat_d = Thread(name='self.heartbeat_daemon',
+        #                     target=self.heartbeat_daemon)
+        #heartbeat_d.setDaemon(True)
+        #heartbeat_d.start()
 
         listener_thread = Thread(name='self.listener_thread',
                                  target=self.listener_thread)
@@ -191,7 +219,7 @@ class DOTSClient(object):
 
         reader_thread.start()
 
-        self.threads.append(heartbeat_d)
+        #self.threads.append(heartbeat_d)
         self.threads.append(listener_thread)
         self.threads.append(reader_thread)
         signal.pause()
