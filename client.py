@@ -171,6 +171,8 @@ class DOTSClient(object):
             self.send()
             print "*** Sent mitigation request.***"
             time.sleep(self.req_interval)
+            mitigation_resp = self.mitigation_responses.\
+                                   get_response_for(mit_req.eventid)
 
         self.client_message.clear_mitigation_req(mit_req.eventid)
 
@@ -196,6 +198,7 @@ class DOTSClient(object):
 
     def listener_thread(self):
         self.channel.wait_for_message(self.recv_msg_event)
+        self.read()
 
     def heartbeat_daemon(self):
         while not self.signal_lost:

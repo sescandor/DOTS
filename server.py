@@ -23,6 +23,17 @@ class DOTSServer(object):
         self.hb_interval = 15
         self.recv_msg_event = threading.Event()
 
+        signal.signal(signal.SIGUSR1, self.receive_sig)
+
+    def receive_sig(self, signum, stack):
+        print "Received OS signal:", signum
+        if signum is 30:
+            self.test_send_mitigation_resp()
+
+    def test_send_mitigation_resp(self):
+        mit_resp = self.server_message.mitigations.add()
+        mit_resp.eventid = "666"
+
     def writebuf(self):
         self.server_message.seqno = self.server_message.seqno + 1
         self.server_message.last_client_seqno = self.last_recv_seqno
