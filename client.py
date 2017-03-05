@@ -80,11 +80,16 @@ class DOTSClient(object):
         self.channel = channel
         self.threads = []
 
-        signal.signal(signal.SIGINT, self.close_channel)
+        signal.signal(signal.SIGUSR1, self.receive_sig)
 
         self.recv_msg_event = Event()
 
         self.mitigation_responses = MitigationResponses()
+
+    def receive_sig(self, signum, stack):
+        print "Received OS signal:", signum
+        if signum is 30:
+            self.test_req_mitigation()
 
     def writebuf(self):
         self.client_message.prep_for_write(self.last_recv_seqno)
@@ -120,7 +125,7 @@ class DOTSClient(object):
                 self.readbuf()
                 self.handle_message()
             except Exception as e:
-                print "Error reading channel"
+                print "Client - Error reading channel"
                 print "Error was:", str(e)
             finally:
                 self.recv_msg_event.clear()
@@ -130,6 +135,11 @@ class DOTSClient(object):
         print "client seq number sent:", self.client_message.get_seqno()
 
     def test_req_mitigation(self):
+        """ 
+        In order to test mitigation requests, you need to send 
+        a: kill -usr1 {PID} signal to the client process, where
+        {PID} is the client process ID.
+        """
         print "### Starting test_req_mitigation ###"
         mit_req = self.client_message.create_mitigation_req("666")
 
@@ -159,7 +169,7 @@ class DOTSClient(object):
 
         while not mitigation_resp:
             self.send()
-            print "Sent mitigation request."
+            print "*** Sent mitigation request.***"
             time.sleep(self.req_interval)
 
         self.clear_mitigation_req()
@@ -205,5 +215,4 @@ if __name__ == "__main__":
     channel.set_remote(sys.argv[2], int(sys.argv[3]))
 
     client = DOTSClient(channel)
-    #client.start()
-    client.test_req_mitigation()
+    client.start()
