@@ -172,7 +172,7 @@ class DOTSClient(object):
             print "*** Sent mitigation request.***"
             time.sleep(self.req_interval)
 
-        self.clear_mitigation_req()
+        self.client_message.clear_mitigation_req(mit_req.eventid)
 
     def start(self):
         heartbeat_d = Thread(name='self.heartbeat_daemon',
