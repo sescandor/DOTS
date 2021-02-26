@@ -1,8 +1,7 @@
 
 # Proof-of-Concept for DDoS Open Threat Signaling Protocol
 
-Based on protocol specifications found in [the IETF DOTS document]
-(https://datatracker.ietf.org/doc/draft-teague-dots-protocol/?include\_text=1)
+Based on protocol specifications found in [the IETF DOTS document](https://datatracker.ietf.org/doc/draft-teague-dots-protocol/?include\_text=1)
 
 Scope:
 * Implement client-server heartbeat communication.
